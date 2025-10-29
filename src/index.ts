@@ -5,7 +5,7 @@ import DB from './database/db';
 import WhatsappModule from './modules/whatsapp/whatsapp.module';
 
 const app = express();
-const port = process.env.PORT || 80;
+const port = process.env.PORT || 3012;
 
 app.use(express.json());
 
