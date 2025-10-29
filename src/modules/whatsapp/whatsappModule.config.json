@@ -1,0 +1,35 @@
+{
+    "moduleName": "WhatsAppModule",
+    "version": "1.0.0",
+    "author": "kindra.cl",
+    "description": "A module to integrate WhatsApp messaging functionality.",
+    "configPath": "./whatsappModule.config.json",
+    "controllerPath": "/whatsapp",
+    "apiUrl": "https://api.whatsapp.com/v1/",
+    "settings": {
+        "apiToken": {
+            "type": "string",
+            "required": true,
+            "description": "API key for authenticating with WhatsApp API",
+            "value": "YOUR_API_KEY"
+        },
+        "localToken": {
+            "type": "string",
+            "required": true,
+            "description": "Local token for verifying incoming webhook requests",
+            "value": "YOUR_LOCAL_TOKEN"
+        },
+        "handleMedia": {
+            "type": "boolean",
+            "required": true,
+            "description": "Whether to handle media messages or ignore them",
+            "value": false
+        },
+        "allowPersistentChanges": {
+            "type": "boolean",
+            "required": true,
+            "description": "Whether to allow persistent changes to other modules to be triggered by WhatsApp messages",
+            "value": false
+        }
+    }
+}
