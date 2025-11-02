@@ -19,6 +19,12 @@
             "description": "API access token for WhatsApp Business API",
             "value": "YOUR_API_TOKEN"
         },
+        "verifyToken": {
+            "type": "string",
+            "required": true,
+            "description": "Verification token for webhook setup",
+            "value": "KLJBSDFP908H24FOJBSD089H24T"
+        },
         "phoneNumberId": {
             "type": "string",
             "required": true,
