@@ -5,9 +5,6 @@ import HardLogger from '../../logger/hardLogger';
 import ModuleDescriptor, { ModuleActionDescriptor } from '../../interfaces/moduleDescriptor';
 import AggregatedMessages from '../../aggregatedMessages';
 import ModuleManager from '../../moduleManager';
-import UsersModule from '../../user/users.module';
-import { NetworkResources } from 'inspector/promises';
-import WebhookMessageTemplate from './webhookMessageTemplate';
 
 export default class WhatsappModule implements SocialModuleInterface {
     private static moduleName = "";
@@ -70,19 +67,18 @@ export default class WhatsappModule implements SocialModuleInterface {
     }
 
     async webhookInputHandler(req: Request, res: Response): Promise<void> {
-        const message = new WebhookMessageTemplate(req.body);
-        HardLogger.log(`Webhook Input Handler received message: ${JSON.stringify(message)}`);
+        HardLogger.log(`Webhook Input Handler received message: ${JSON.stringify(req.body)}`);
 
-        const userId = message.value.contacts[0].wa_id;
-
-        let agg = this.agregateRequests.find(a => a.userId === userId);
-        if (!agg) agg = new AggregatedMessages(userId, (messages: { timestamp: number; content: string }[]) => {
-            this.processAggregatedMessages.bind(this, userId, messages);
-        }, 5000);
-        for (const msg of message.value.messages) {
-            agg.pushMessage({ timestamp: Date.now(), content: msg.text.body });
-        }
-        this.agregateRequests.push(agg);
+        //const userId = req.body.value.contacts[0].wa_id;
+        //
+        //let agg = this.agregateRequests.find(a => a.userId === userId);
+        //if (!agg) agg = new AggregatedMessages(userId, (messages: { timestamp: number; content: string }[]) => {
+        //    this.processAggregatedMessages.bind(this, userId, messages);
+        //}, 5000);
+        //for (const msg of message.value.messages) {
+        //    agg.pushMessage({ timestamp: Date.now(), content: msg.text.body });
+        //}
+        //this.agregateRequests.push(agg);
 
         res.status(200).end();
     }
