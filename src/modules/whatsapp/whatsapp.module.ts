@@ -7,6 +7,7 @@ import AggregatedMessages from '../../aggregatedMessages';
 import ModuleManager from '../../moduleManager';
 import UsersModule from '../../user/users.module';
 import { NetworkResources } from 'inspector/promises';
+import WebhookMessageTemplate from './webhookMessageTemplate';
 
 export default class WhatsappModule implements SocialModuleInterface {
     private static moduleName = "";
@@ -50,9 +51,11 @@ export default class WhatsappModule implements SocialModuleInterface {
         ];
     }
 
-    private async processAggregatedMessages(userId: string): Promise<void> {
+    private async processAggregatedMessages(userId: string, messages: { timestamp: number, content: string }[]): Promise<void> {
+        HardLogger.log(`Processing aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
+        
         // Get user context from File DB
-        DB.loadFile(`${userId}.context.json`);
+        // DB.loadFile(`${userId}.context.json`);
 
         // Get all current step options from ModuleManager.getAvailableActions(${WhatsappModule.moduleName}) (Both source and target should have their 'allowModuleInterop' setting to true)
         // Get other user data from ModuleManager.getUserData(userId) this should get data from all modules that export an getUserData function
@@ -67,12 +70,20 @@ export default class WhatsappModule implements SocialModuleInterface {
     }
 
     async webhookInputHandler(req: Request, res: Response): Promise<void> {
-        const userId = req.body.userId;
+        const message = new WebhookMessageTemplate(req.body);
+
+        const userId = message.value.contacts[0].wa_id;
 
         let agg = this.agregateRequests.find(a => a.userId === userId);
-        if (!agg) agg = new AggregatedMessages(userId, this.processAggregatedMessages.bind(this, userId), 5000);
-        agg.pushMessage({ timestamp: req.body.message.timestamp, content: req.body.message.content });
+        if (!agg) agg = new AggregatedMessages(userId, (messages: { timestamp: number; content: string }[]) => {
+            this.processAggregatedMessages.bind(this, userId, messages);
+        }, 5000);
+        for (const msg of message.value.messages) {
+            agg.pushMessage({ timestamp: Date.now(), content: msg.text.body });
+        }
         this.agregateRequests.push(agg);
+
+        res.status(200).end();
     }
 
     async sendMessageHandler(userId: string, message: string): Promise<void> {
@@ -118,9 +129,11 @@ export default class WhatsappModule implements SocialModuleInterface {
         app.post(`${controllerRoute}/webhook`, (req: Request, res: Response) => {
             HardLogger.log(`Received POST webhook: ${JSON.stringify(req.body)}`);
 
-            const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-            console.log(`\n\nWebhook received ${timestamp}\n`);
-            console.log(JSON.stringify(req.body, null, 2));
+            this.webhookInputHandler(req, res).catch(err => {
+                HardLogger.log(`Error processing webhook input: ${err}`);
+                res.status(500).end();
+            });
+
             res.status(200).end();
         });
 
