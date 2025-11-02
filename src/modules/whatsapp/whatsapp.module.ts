@@ -116,9 +116,15 @@ export default class WhatsappModule implements SocialModuleInterface {
     register(app: Express, controllerRoute: string): void {
         // register webhook route
         app.post(`${controllerRoute}/webhook`, (req: Request, res: Response) => {
-            HardLogger.log(`Received webhook: ${JSON.stringify(req.body)}`);
+            HardLogger.log(`Received POST webhook: ${JSON.stringify(req.body)}`);
 
             res.status(200).send('EVENT_RECEIVED');
+        });
+
+        app.get(`${controllerRoute}/webhook`, (req: Request, res: Response) => {
+            HardLogger.log(`Received GET webhook: ${JSON.stringify(req.body)}`);
+
+            res.status(200).send(req.query['hub.challenge']);
         });
 
         // register config update route
