@@ -67,7 +67,7 @@ export default class WhatsappModule implements SocialModuleInterface {
     }
 
     async webhookInputHandler(req: Request, res: Response): Promise<void> {
-        HardLogger.log(`Webhook Input Handler received message: ${JSON.stringify(req.body)}`);
+        HardLogger.log(`Webhook Input Handler received message: ${JSON.stringify(req.body.entry)}`);
 
         //const userId = req.body.value.contacts[0].wa_id;
         //
