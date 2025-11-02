@@ -71,7 +71,8 @@ export default class WhatsappModule implements SocialModuleInterface {
             const userId = entry.value.contacts[0].wa_id;
             let agg = this.agregateRequests.find(a => a.userId === userId);
             if (!agg) agg = new AggregatedMessages(userId, (messages: { timestamp: number; content: string }[]) => {
-                this.processAggregatedMessages.bind(this, userId, messages);
+                console.log(`Aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
+                this.processAggregatedMessages(userId, messages);
             }, 5000);
 
             for (const msg of entry.value.messages) {
