@@ -1,0 +1,1 @@
+WhatsApp Module: Failed to send message. Status: 400, Response: {"error":{"message":"(#100) Param text must be a JSON object.","type":"OAuthException","code":100,"fbtrace_id":"Aep7eU-jVjYY-cxiiirE_od"}}

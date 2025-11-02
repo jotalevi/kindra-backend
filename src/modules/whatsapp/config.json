@@ -1,0 +1,47 @@
+{
+    "moduleName": "WhatsAppModule",
+    "version": "1.0.0",
+    "author": "kindra.cl",
+    "description": "A module to integrate WhatsApp messaging functionality.",
+    "configPath": "./whatsappModule.config.json",
+    "controllerPath": "/whatsapp",
+    "apiUrl": "https://api.whatsapp.com/v1/",
+    "settings": {
+        "active": {
+            "type": "boolean",
+            "required": true,
+            "description": "Whether the WhatsApp module is active",
+            "value": true
+        },
+        "accessToken": {
+            "type": "string",
+            "required": true,
+            "description": "API access token for WhatsApp Business API",
+            "value": "YOUR_API_TOKEN"
+        },
+        "phoneNumberId": {
+            "type": "string",
+            "required": true,
+            "description": "The phone number ID associated with the WhatsApp Business API",
+            "value": "YOUR_PHONE_NUMBER_ID"
+        },
+        "allowPersistentChanges": {
+            "type": "boolean",
+            "required": true,
+            "description": "Whether to allow persistent changes to other modules to be triggered by WhatsApp messages",
+            "value": false
+        },
+        "allowModuleInteroperation": {
+            "type": "boolean",
+            "required": true,
+            "description": "Whether to allow interaction with other modules in response to WhatsApp messages",
+            "value": false
+        },
+        "webhookTimeout": {
+            "type": "number",
+            "required": false,
+            "description": "Timeout in milliseconds to aggregate webhook calls by userID before processing",
+            "value": 5000
+        }
+    }
+}

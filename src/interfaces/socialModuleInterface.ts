@@ -4,4 +4,8 @@ export default interface SocialModuleInterface {
     webhookInputHandler(req: Request, res: Response): Promise<void>;
     sendMessageHandler(userId: string, message: string): Promise<void>;
     register(app: Express, controllerRoute: string): void;
+    
+    // TODO: Add in missing methods to be implemented in regards of ModuleManager interop
+    // getUserData
+    // getActionDescriptors
 }
