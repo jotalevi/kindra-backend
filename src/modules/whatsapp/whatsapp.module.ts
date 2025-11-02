@@ -53,7 +53,7 @@ export default class WhatsappModule implements SocialModuleInterface {
 
     private async processAggregatedMessages(userId: string, messages: { timestamp: number, content: string }[]): Promise<void> {
         HardLogger.log(`Processing aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
-        
+
         // Get user context from File DB
         // DB.loadFile(`${userId}.context.json`);
 
@@ -71,6 +71,7 @@ export default class WhatsappModule implements SocialModuleInterface {
 
     async webhookInputHandler(req: Request, res: Response): Promise<void> {
         const message = new WebhookMessageTemplate(req.body);
+        HardLogger.log(`Webhook Input Handler received message: ${JSON.stringify(message)}`);
 
         const userId = message.value.contacts[0].wa_id;
 
