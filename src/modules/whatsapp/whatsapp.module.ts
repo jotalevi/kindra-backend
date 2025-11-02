@@ -67,18 +67,17 @@ export default class WhatsappModule implements SocialModuleInterface {
     }
 
     async webhookInputHandler(req: Request, res: Response): Promise<void> {
-        HardLogger.log(`Webhook Input Handler received message: ${JSON.stringify(req.body.entry)}`);
+        for (const entry of req.body.entry[0].changes) {
+            const userId = entry.value.contacts[0].wa_id;
+            let agg = this.agregateRequests.find(a => a.userId === userId);
+            if (!agg) agg = new AggregatedMessages(userId, (messages: { timestamp: number; content: string }[]) => {
+                this.processAggregatedMessages.bind(this, userId, messages);
+            }, 5000);
 
-        //const userId = req.body.value.contacts[0].wa_id;
-        //
-        //let agg = this.agregateRequests.find(a => a.userId === userId);
-        //if (!agg) agg = new AggregatedMessages(userId, (messages: { timestamp: number; content: string }[]) => {
-        //    this.processAggregatedMessages.bind(this, userId, messages);
-        //}, 5000);
-        //for (const msg of message.value.messages) {
-        //    agg.pushMessage({ timestamp: Date.now(), content: msg.text.body });
-        //}
-        //this.agregateRequests.push(agg);
+            for (const msg of entry.value.messages) {
+                agg.pushMessage({ timestamp: Date.now(), content: msg.text.body });
+            }
+        }
 
         res.status(200).end();
     }
