@@ -123,8 +123,6 @@ export default class WhatsappModule implements SocialModuleInterface {
     register(app: Express, controllerRoute: string): void {
         // register webhook route
         app.post(`${controllerRoute}/webhook`, (req: Request, res: Response) => {
-            HardLogger.log(`Received POST webhook: ${JSON.stringify(req.body)}`);
-
             this.webhookInputHandler(req, res).catch(err => {
                 HardLogger.log(`Error processing webhook input: ${err}`);
                 res.status(500).end();
@@ -135,9 +133,6 @@ export default class WhatsappModule implements SocialModuleInterface {
 
         app.get(`${controllerRoute}/webhook`, (req: Request, res: Response) => {
             const verifyToken = DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.verifyToken`);
-
-            HardLogger.log(`Received GET webhook: ${JSON.stringify(req.body)}`);
-
             const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
 
             if (mode === 'subscribe' && token === verifyToken) {
