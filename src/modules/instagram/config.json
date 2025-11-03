@@ -1,15 +1,15 @@
 {
-    "moduleName": "WhatsAppModule",
+    "moduleName": "InstagramModule",
     "version": "1.0.0",
     "author": "kindra.cl",
-    "description": "A module to integrate WhatsApp messaging functionality.",
-    "configPath": "./whatsappModule.config.json",
-    "controllerPath": "/whatsapp",
+    "description": "A module to integrate Instagram messaging functionality.",
+    "configPath": "./instagramModule.config.json",
+    "controllerPath": "/instagram",
     "settings": {
         "active": {
             "type": "boolean",
             "required": true,
-            "description": "Whether the WhatsApp module is active",
+            "description": "Whether the Instagram module is active",
             "value": true
         },
         "accessToken": {

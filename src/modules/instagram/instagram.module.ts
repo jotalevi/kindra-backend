@@ -5,7 +5,7 @@ import HardLogger from '../../logger/hardLogger';
 import ModuleDescriptor, { ModuleActionDescriptor } from '../../interfaces/moduleDescriptor';
 import AggregatedMessages from '../../aggregatedMessages';
 
-export default class WhatsappModule implements SocialModuleInterface {
+export default class InstagramModule implements SocialModuleInterface {
     private static moduleName = "";
 
     static register(app: Express): ModuleDescriptor {
@@ -49,17 +49,9 @@ export default class WhatsappModule implements SocialModuleInterface {
         HardLogger.log(`Processing aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
 
         // Get user context from File DB
-        const expectedOutput = DB.loadFile(`${WhatsappModule.moduleName}/expectedOutput`);
-        const ucontext = DB.loadFile(`${WhatsappModule.moduleName}/${userId}.ucontext.json`);
-        const prompt = DB.loadFile(`${WhatsappModule.moduleName}/prompt`);
-        const speech = DB.loadFile(`${WhatsappModule.moduleName}/speech`);
+        const ucontext = DB.loadFile(`${userId}.${InstagramModule.moduleName}.ucontext.json`);
 
-        HardLogger.log(`User context: ${JSON.stringify(ucontext)}`);
-        HardLogger.log(`Expected Output: ${JSON.stringify(expectedOutput)}`);
-        HardLogger.log(`Prompt: ${prompt}`);
-        HardLogger.log(`Speech: ${speech}`);
-
-        // Get all current step options from ModuleManager.getAvailableActions(${WhatsappModule.moduleName}) (Both source and target should have their 'allowModuleInterop' setting to true)
+        // Get all current step options from ModuleManager.getAvailableActions(${InstagramModule.moduleName}) (Both source and target should have their 'allowModuleInterop' setting to true)
         // Get other user data from ModuleManager.getUserData(userId) this should get data from all modules that export an getUserData function
         // Get Current Speech from DB.loadFile("speech.txt")
         // Get Current User Context from DB.loadFile("${userID}.context.json")
@@ -90,16 +82,16 @@ export default class WhatsappModule implements SocialModuleInterface {
     }
 
     async sendMessageHandler(userId: string, message: string): Promise<void> {
-        const accessToken = DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.accessToken`);
+        const accessToken = DB.getPlainValue(`MODULE.${InstagramModule.moduleName}.settings.accessToken`);
         if (!accessToken) {
-            HardLogger.log(`WhatsApp Module: Access Token is not configured.`);
-            throw new Error("WhatsApp Module: Access Token is not configured.");
+            HardLogger.log(`Instagram Module: Access Token is not configured.`);
+            throw new Error("Instagram Module: Access Token is not configured.");
         }
 
-        const phoneNumber = DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.phoneNumberId`);
+        const phoneNumber = DB.getPlainValue(`MODULE.${InstagramModule.moduleName}.settings.phoneNumberId`);
         if (!phoneNumber) {
-            HardLogger.log(`WhatsApp Module: Phone Number ID is not configured.`);
-            throw new Error("WhatsApp Module: Phone Number ID is not configured.");
+            HardLogger.log(`Instagram Module: Phone Number ID is not configured.`);
+            throw new Error("Instagram Module: Phone Number ID is not configured.");
         }
         
         const response = await fetch(`https://graph.facebook.com/v22.0/${phoneNumber}/messages`, {
@@ -109,7 +101,7 @@ export default class WhatsappModule implements SocialModuleInterface {
                 'Authorization': `Bearer ${accessToken}`
             },
             body: JSON.stringify({
-                messaging_product: "whatsapp",
+                messaging_product: "instagram",
                 to: userId,
                 type: "text",
                 text: {
@@ -120,8 +112,8 @@ export default class WhatsappModule implements SocialModuleInterface {
 
         if (!response.ok) {
             const errorText = await response.text();
-            HardLogger.log(`WhatsApp Module: Failed to send message. Status: ${response.status}, Response: ${errorText}`);
-            throw new Error(`WhatsApp Module: Failed to send message. Status: ${response.status}`);
+            HardLogger.log(`Instagram Module: Failed to send message. Status: ${response.status}, Response: ${errorText}`);
+            throw new Error(`Instagram Module: Failed to send message. Status: ${response.status}`);
         }
 
         console.log(await response.text());        
@@ -139,7 +131,7 @@ export default class WhatsappModule implements SocialModuleInterface {
         });
 
         app.get(`${controllerRoute}/webhook`, (req: Request, res: Response) => {
-            const verifyToken = DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.verifyToken`);
+            const verifyToken = DB.getPlainValue(`MODULE.${InstagramModule.moduleName}.settings.verifyToken`);
             const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
 
             if (mode === 'subscribe' && token === verifyToken) {
@@ -152,13 +144,13 @@ export default class WhatsappModule implements SocialModuleInterface {
 
         // register config update route
         app.get(`${controllerRoute}/config`, (req: Request, res: Response) => {
-            res.json(DB.getMatching(`MODULE.${WhatsappModule.moduleName}.settings.`, ""));
+            res.json(DB.getMatching(`MODULE.${InstagramModule.moduleName}.settings.`, ""));
         });
 
         app.post(`${controllerRoute}/config`, (req: Request, res: Response) => {
             const updates = req.body;
             Object.keys(updates).forEach((key) => {
-                DB.setPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.${key}`, updates[key]);
+                DB.setPlainValue(`MODULE.${InstagramModule.moduleName}.settings.${key}`, updates[key]);
             });
             res.json({ status: 'success' });
         });

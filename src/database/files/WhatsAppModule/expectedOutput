@@ -1,0 +1,14 @@
+// this is the expected output format in TypeScript
+
+let output: {
+    action: "ANSWER" | "LIST_SCHEDULES" | "EDIT_SCHEDULE" | "CANCEL_SCHEDULE" | "CREATE_SCHEDULE" | "UPDATE_USER_CONTEXT";
+    message?: string; // if "ANSWER" | "LIST_SCHEDULES" expect message
+    scheduleDetails?: { // if "EDIT_SCHEDULE" | "CANCEL_SCHEDULE" | "CREATE_SCHEDULE" expect scheduleDetails
+        date?: string;
+        time?: string;
+        title?: string;
+        description?: string;
+        durationMinutes?: number;
+    },
+    newUserContext?: string; // if "UPDATE_USER_CONTEXT" expect newUserContext (should be a JSON string to be saved to a file replacing the current user context, this should add to or update the current context)
+}[]

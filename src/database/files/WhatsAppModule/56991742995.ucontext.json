@@ -1,0 +1,17 @@
+{
+    "usuario": {
+        "id": "56991742995",
+        "nombre": "Eros Talevi"
+    },
+    "preferencias": {
+        "horarioPreferido": "Tardes",
+        "diasPreferidos": ["Lunes", "Jueves", "Sabado"]
+    },
+    "salud": {
+        "alergias": ["Ninguna conocida"],
+        "medicamentos": [],
+        "observaciones": "Paciente sin antecedentes relevantes informados",
+        "pesoKg": null,
+        "alturaCm": null
+    }
+}
