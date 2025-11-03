@@ -68,9 +68,9 @@ export default class WhatsappModule implements SocialModuleInterface {
         const speech = DB.loadFile(`speech`);
         //const currentUserSchedule = _.modules.invokeMethod("CalendarModule", "getUserScheduledEvents", [userId]);
 
-        const client = new OpenAI({ apiKey: (await DB.getPlainValue('CONFIG.OPENAI_API_KEY')) ?? "key" });
+        const client = new OpenAI({ apiKey: ((await DB.getPlainValue('CONFIG.OPENAI_API_KEY')) ?? '"key"').replace(/"/g, '') });        
         const response = await client.responses.create({
-            model: (await DB.getPlainValue('CONFIG.OPENAI_PREFERRED_MODEL')) || 'gpt-4o-mini', // use the preferred model available (configurable via DB)
+            model: ((await DB.getPlainValue('CONFIG.OPENAI_PREFERRED_MODEL')) || '"gpt-4o-mini"').replace(/"/g, ''),
             input: [
                 {
                     role: "system",
