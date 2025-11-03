@@ -70,8 +70,7 @@ async function main() {
     app.use((req, res, next) => {
         const host = req.headers.host || '';
         const tenantId = DB.getPlainValue('HIDDEN.TENANT_ID') || 'kindra';
-        if (host.startsWith(tenantId + '.kindra.cl') || true) {
-            // make it return a basic HTML file (./public/index.html)
+        if (host.startsWith(tenantId + '.kindra.cl')) {
             res.sendFile('index.html', { root: './public' });
         } else {
             next();
