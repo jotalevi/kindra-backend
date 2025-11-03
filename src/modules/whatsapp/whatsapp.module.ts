@@ -60,7 +60,8 @@ export default class WhatsappModule implements SocialModuleInterface {
 
         const client = new OpenAI({ apiKey: DB.getPlainValue('OPENAI_API_KEY') });
         const response = await client.responses.create({
-            model: "gpt-5",
+            model: DB.getPlainValue('OPENAI_CHEAPEST_MODEL') || 'gpt-4o-mini', // use the cheapest model available (configurable via DB)
+
             input: [
                 {
                     role: "system",

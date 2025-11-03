@@ -1,7 +1,9 @@
 import express from 'express';
 import WhatsappModule from './modules/whatsapp/whatsapp.module';
 import DB from './database/db';
+import dotenv from 'dotenv';
 
+dotenv.config();
 DB.setPlainValue('OPENAI_API_KEY', process.env.OPENAI_API_KEY);
 
 const app = express();
