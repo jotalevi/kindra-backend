@@ -3,6 +3,12 @@ import fs from 'fs';
 export default class DB {
     private static data: { [key: string]: any } = {};
 
+    static init(): void {
+        if (!fs.existsSync('./src/database/data.json')) {
+            fs.writeFileSync('./src/database/data.json', '{}');
+        } 
+    }
+
     static setPlainValue(key: string, value: any): void {
         const data = fs.readFileSync('./src/database/data.json', 'utf-8');
         DB.data = JSON.parse(data);

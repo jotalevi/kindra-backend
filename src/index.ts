@@ -3,6 +3,8 @@ import WhatsappModule from './modules/whatsapp/whatsapp.module';
 import DB from './database/db';
 import dotenv from 'dotenv';
 
+DB.init();
+
 dotenv.config();
 DB.setPlainValue('OPENAI_API_KEY', process.env.OPENAI_API_KEY);
 DB.setPlainValue('OPENAI_PREFERRED_MODEL', process.env.OPENAI_PREFERRED_MODEL || 'gpt-4o-mini');
