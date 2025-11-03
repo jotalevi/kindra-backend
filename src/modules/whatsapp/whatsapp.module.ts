@@ -47,6 +47,8 @@ export default class WhatsappModule implements SocialModuleInterface {
     }
 
     private async processAggregatedMessages(userId: string, messages: { timestamp: number, content: string }[]): Promise<void> {
+        this.agregateRequests = this.agregateRequests.filter(a => a.userId !== userId);
+
         HardLogger.log(`Processing aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
         
         const expectedOutput = DB.loadFile(`${WhatsappModule.moduleName}/expectedOutput`);
