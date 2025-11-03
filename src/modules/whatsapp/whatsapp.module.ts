@@ -4,6 +4,7 @@ import SocialModuleInterface from "../../interfaces/socialModuleInterface";
 import HardLogger from '../../logger/hardLogger';
 import ModuleDescriptor, { ModuleActionDescriptor } from '../../interfaces/moduleDescriptor';
 import AggregatedMessages from '../../aggregatedMessages';
+import OpenAI from "openai";
 
 export default class WhatsappModule implements SocialModuleInterface {
     private static moduleName = "";
@@ -49,26 +50,43 @@ export default class WhatsappModule implements SocialModuleInterface {
         HardLogger.log(`Processing aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
 
         // Get user context from File DB
+
+
         const expectedOutput = DB.loadFile(`${WhatsappModule.moduleName}/expectedOutput`);
         const ucontext = DB.loadFile(`${WhatsappModule.moduleName}/${userId}.ucontext.json`);
         const prompt = DB.loadFile(`prompt`);
         const speech = DB.loadFile(`speech`);
 
-        HardLogger.log(`User context: ${JSON.stringify(ucontext)}`);
-        HardLogger.log(`Expected Output: ${JSON.stringify(expectedOutput)}`);
-        HardLogger.log(`Prompt: ${prompt}`);
-        HardLogger.log(`Speech: ${speech}`);
 
-        // Get all current step options from ModuleManager.getAvailableActions(${WhatsappModule.moduleName}) (Both source and target should have their 'allowModuleInterop' setting to true)
-        // Get other user data from ModuleManager.getUserData(userId) this should get data from all modules that export an getUserData function
-        // Get Current Speech from DB.loadFile("speech.txt")
-        // Get Current User Context from DB.loadFile("${userID}.context.json")
+        const client = new OpenAI({ apiKey: DB.getPlainValue('OPENAI_API_KEY') });
+        const response = await client.responses.create({
+            model: "gpt-5",
+            input: [
+                {
+                    role: "system",
+                    content: prompt
+                },
+                {
+                    role: "system",
+                    content: `User Context: ${JSON.stringify(ucontext)}`
+                },
+                {
+                    role: "system",
+                    content: `Speech: ${JSON.stringify(speech)}`
+                },
+                {
+                    role: "system",
+                    content: `Expected Output: ${JSON.stringify(expectedOutput)}`
+                },
+                {
+                    role: "user",
+                    content: `Messages: ${JSON.stringify(messages)}`
+                }
+            ],
+        });
 
-        // Send to OpenAI for processing
+        HardLogger.log(`OpenAI response: ${JSON.stringify(response)}`);
 
-        // Recieve Steps
-
-        // ModuleManager.handleSteps(userId, steps);
     }
 
     async webhookInputHandler(req: Request, res: Response): Promise<void> {
@@ -101,7 +119,7 @@ export default class WhatsappModule implements SocialModuleInterface {
             HardLogger.log(`WhatsApp Module: Phone Number ID is not configured.`);
             throw new Error("WhatsApp Module: Phone Number ID is not configured.");
         }
-        
+
         const response = await fetch(`https://graph.facebook.com/v22.0/${phoneNumber}/messages`, {
             method: 'POST',
             headers: {
@@ -124,7 +142,7 @@ export default class WhatsappModule implements SocialModuleInterface {
             throw new Error(`WhatsApp Module: Failed to send message. Status: ${response.status}`);
         }
 
-        console.log(await response.text());        
+        console.log(await response.text());
     }
 
     register(app: Express, controllerRoute: string): void {
