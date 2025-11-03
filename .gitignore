@@ -2,3 +2,5 @@
 /dist
 /.env
 /src/database/data.json
+/src/database/data.db
+hardlogger.log
