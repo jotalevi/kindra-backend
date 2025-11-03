@@ -145,13 +145,13 @@ export default class WhatsappModule implements SocialModuleInterface {
     async sendMessageHandler(userId: string, message: string): Promise<void> {
         DB.pushModuleLog(WhatsappModule.moduleName, "SYSTEM_ACTION", `Sending message to ${userId}: ${message}`);
 
-        const accessToken = DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.accessToken`);
+        const accessToken = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.accessToken`) ?? '""').replace(/"/g, '');
         if (!accessToken) {
             HardLogger.log(`WhatsApp Module: Access Token is not configured.`);
             throw new Error("WhatsApp Module: Access Token is not configured.");
         }
 
-        const phoneNumber = DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.phoneNumberId`);
+        const phoneNumber = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.phoneNumberId`) ?? '""').replace(/"/g, '');
         if (!phoneNumber) {
             HardLogger.log(`WhatsApp Module: Phone Number ID is not configured.`);
             throw new Error("WhatsApp Module: Phone Number ID is not configured.");
