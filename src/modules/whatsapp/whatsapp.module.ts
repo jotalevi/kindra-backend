@@ -105,7 +105,7 @@ export default class WhatsappModule implements SocialModuleInterface {
             let agg = this.agregateRequests.find(a => a.userId === userId);
             if (!agg) agg = new AggregatedMessages(userId, (messages: { timestamp: number; content: string }[]) => {
                 this.processAggregatedMessages(userId, messages);
-            }, 10000);
+            }, 5000);
 
             for (const msg of entry.value.messages) {
                 agg.pushMessage({ timestamp: Date.now(), content: msg.text.body });
