@@ -51,8 +51,8 @@ export default class WhatsappModule implements SocialModuleInterface {
         // Get user context from File DB
         const expectedOutput = DB.loadFile(`${WhatsappModule.moduleName}/expectedOutput`);
         const ucontext = DB.loadFile(`${WhatsappModule.moduleName}/${userId}.ucontext.json`);
-        const prompt = DB.loadFile(`${WhatsappModule.moduleName}/prompt`);
-        const speech = DB.loadFile(`${WhatsappModule.moduleName}/speech`);
+        const prompt = DB.loadFile(`prompt`);
+        const speech = DB.loadFile(`speech`);
 
         HardLogger.log(`User context: ${JSON.stringify(ucontext)}`);
         HardLogger.log(`Expected Output: ${JSON.stringify(expectedOutput)}`);
