@@ -48,10 +48,7 @@ export default class WhatsappModule implements SocialModuleInterface {
 
     private async processAggregatedMessages(userId: string, messages: { timestamp: number, content: string }[]): Promise<void> {
         HardLogger.log(`Processing aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
-
-        // Get user context from File DB
-
-
+        
         const expectedOutput = DB.loadFile(`${WhatsappModule.moduleName}/expectedOutput`);
         const ucontext = DB.loadFile(`${WhatsappModule.moduleName}/${userId}.ucontext.json`);
         const prompt = DB.loadFile(`prompt`);
@@ -60,8 +57,7 @@ export default class WhatsappModule implements SocialModuleInterface {
 
         const client = new OpenAI({ apiKey: DB.getPlainValue('OPENAI_API_KEY') });
         const response = await client.responses.create({
-            model: DB.getPlainValue('OPENAI_CHEAPEST_MODEL') || 'gpt-4o-mini', // use the cheapest model available (configurable via DB)
-
+            model: DB.getPlainValue('OPENAI_PREFERRED_MODEL') || 'gpt-4o-mini', // use the preferred model available (configurable via DB)
             input: [
                 {
                     role: "system",
@@ -80,13 +76,26 @@ export default class WhatsappModule implements SocialModuleInterface {
                     content: `Expected Output: ${JSON.stringify(expectedOutput)}`
                 },
                 {
+                    role: "system",
+                    content: "IMPORTANT: Respond with a single valid JSON Array of objects (steps) only. Do NOT include any surrounding explanation, commentary, or markdown. The response must be parseable JSON."
+                },
+                {
                     role: "user",
                     content: `Messages: ${JSON.stringify(messages)}`
                 }
             ],
         });
 
-        HardLogger.log(`OpenAI response: ${JSON.stringify(response)}`);
+        const steps = JSON.parse(response.output_text)
+        console.log(steps)
+
+        for (const step of steps) {
+            if (step.action === "ANSWER") {
+                await this.sendMessageHandler(userId, step.message);
+            } else {
+                HardLogger.log(`Unknown action received from OpenAI: ${step.action}`);
+            }
+        }
 
     }
 
@@ -96,7 +105,7 @@ export default class WhatsappModule implements SocialModuleInterface {
             let agg = this.agregateRequests.find(a => a.userId === userId);
             if (!agg) agg = new AggregatedMessages(userId, (messages: { timestamp: number; content: string }[]) => {
                 this.processAggregatedMessages(userId, messages);
-            }, 10000);
+            }, 1000);
 
             for (const msg of entry.value.messages) {
                 agg.pushMessage({ timestamp: Date.now(), content: msg.text.body });
