@@ -4,29 +4,38 @@ import SocialModuleInterface from "../../interfaces/socialModuleInterface";
 import HardLogger from '../../logger/hardLogger';
 import ModuleDescriptor, { ModuleActionDescriptor } from '../../interfaces/moduleDescriptor';
 import AggregatedMessages from '../../aggregatedMessages';
+import { WebHook } from '../../middleware/auth';
 import OpenAI from "openai";
+import { _ } from '../../index';
 
 export default class WhatsappModule implements SocialModuleInterface {
     private static moduleName = "";
 
-    static register(app: Express): ModuleDescriptor {
+    static async register(app: Express): Promise<ModuleDescriptor> {
         const config = require('./config.json');
         const moduleName = config.moduleName;
         this.moduleName = moduleName;
 
-        Object.keys(config).forEach((key) => {
-            if (key === 'settings') return
-            if (DB.getPlainValue(`MODULE.${moduleName}.statics.${key}`)) return;
-            DB.setPlainValue(`MODULE.${moduleName}.statics.${key}`, config[key]);
-        });
+        const existingModule = await DB.getPlainValue(`MODULE.${moduleName}.registered`);
+        //if (!existingModule) {
+        await DB.setPlainValueAsync(`MODULE.${moduleName}.registered`, true);
 
-        Object.keys(config.settings).forEach((key) => {
-            if (DB.getPlainValue(`MODULE.${moduleName}.settings.${key}`)) return;
-            DB.setPlainValue(`MODULE.${moduleName}.settings.${key}.type`, config.settings[key].type);
-            DB.setPlainValue(`MODULE.${moduleName}.settings.${key}.required`, config.settings[key].required);
-            DB.setPlainValue(`MODULE.${moduleName}.settings.${key}.description`, config.settings[key].description);
-            DB.setPlainValue(`MODULE.${moduleName}.settings.${key}`, config.settings[key].value);
-        });
+        for (const key of Object.keys(config)) {
+            if (key === 'settings') continue;
+            const existing = await DB.getPlainValue(`MODULE.${moduleName}.statics.${key}`);
+            if (existing) continue;
+            await DB.setPlainValueAsync(`MODULE.${moduleName}.statics.${key}`, config[key]);
+        }
+
+        for (const key of Object.keys(config.settings || {})) {
+            const existing = await DB.getPlainValue(`MODULE.${moduleName}.settings.${key}`);
+            if (existing) continue;
+            await DB.setPlainValueAsync(`MODULE.${moduleName}.settings.${key}.type`, config.settings[key].type);
+            await DB.setPlainValueAsync(`MODULE.${moduleName}.settings.${key}.required`, config.settings[key].required);
+            await DB.setPlainValueAsync(`MODULE.${moduleName}.settings.${key}.description`, config.settings[key].description);
+            await DB.setPlainValueAsync(`MODULE.${moduleName}.settings.${key}`, config.settings[key].value);
+        }
+        //}
 
         const instance = new this();
         instance.register(app, config.controllerPath);
@@ -47,19 +56,21 @@ export default class WhatsappModule implements SocialModuleInterface {
     }
 
     private async processAggregatedMessages(userId: string, messages: { timestamp: number, content: string }[]): Promise<void> {
+        DB.pushModuleLog(WhatsappModule.moduleName, "SYSTEM_ACTION", `Processing aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
+
         this.agregateRequests = this.agregateRequests.filter(a => a.userId !== userId);
 
         HardLogger.log(`Processing aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
-        
+
         const expectedOutput = DB.loadFile(`${WhatsappModule.moduleName}/expectedOutput`);
         const ucontext = DB.loadFile(`${WhatsappModule.moduleName}/${userId}.ucontext.json`);
         const prompt = DB.loadFile(`prompt`);
         const speech = DB.loadFile(`speech`);
+        //const currentUserSchedule = _.modules.invokeMethod("CalendarModule", "getUserScheduledEvents", [userId]);
 
-
-        const client = new OpenAI({ apiKey: DB.getPlainValue('OPENAI_API_KEY') });
+        const client = new OpenAI({ apiKey: (await DB.getPlainValue('CONFIG.OPENAI_API_KEY')) ?? "key" });
         const response = await client.responses.create({
-            model: DB.getPlainValue('OPENAI_PREFERRED_MODEL') || 'gpt-4o-mini', // use the preferred model available (configurable via DB)
+            model: (await DB.getPlainValue('CONFIG.OPENAI_PREFERRED_MODEL')) || 'gpt-4o-mini', // use the preferred model available (configurable via DB)
             input: [
                 {
                     role: "system",
@@ -73,6 +84,14 @@ export default class WhatsappModule implements SocialModuleInterface {
                     role: "system",
                     content: `Speech: ${JSON.stringify(speech)}`
                 },
+                //{
+                //    role: "system",
+                //    content: `Current User Scheduled events: ${JSON.stringify([
+                //        { "title": "Liposuccion con doc marcelo", "date": "2024-07-01", "time": "10:00 AM" },
+                //        { "title": "revision con doc marcelo", "date": "2024-07-08", "time": "3:00 PM" },
+                //        { "title": "botox con doc mariana", "date": "2024-07-15", "time": "11:00 AM" }
+                //    ])}`
+                //},
                 {
                     role: "system",
                     content: `Expected Output: ${JSON.stringify(expectedOutput)}`
@@ -94,6 +113,8 @@ export default class WhatsappModule implements SocialModuleInterface {
         for (const step of steps) {
             if (step.action === "ANSWER") {
                 await this.sendMessageHandler(userId, step.message);
+            } else if (step.action === "UPDATE_USER_CONTEXT") {
+                DB.saveFile(`${WhatsappModule.moduleName}/${userId}.ucontext.json`, step.newUserContext);
             } else {
                 HardLogger.log(`Unknown action received from OpenAI: ${step.action}`);
             }
@@ -102,12 +123,14 @@ export default class WhatsappModule implements SocialModuleInterface {
     }
 
     async webhookInputHandler(req: Request, res: Response): Promise<void> {
+        DB.pushModuleLog(WhatsappModule.moduleName, "SYSTEM_ACTION", `Received Message: ${JSON.stringify(req.body)}`);
+
         for (const entry of req.body.entry[0].changes) {
             const userId = entry.value.contacts[0].wa_id;
             let agg = this.agregateRequests.find(a => a.userId === userId);
             if (!agg) agg = new AggregatedMessages(userId, (messages: { timestamp: number; content: string }[]) => {
                 this.processAggregatedMessages(userId, messages);
-            }, 5000);
+            }, parseInt(await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.aggregationTimeout`) || "5000"));
 
             for (const msg of entry.value.messages) {
                 agg.pushMessage({ timestamp: Date.now(), content: msg.text.body });
@@ -120,6 +143,8 @@ export default class WhatsappModule implements SocialModuleInterface {
     }
 
     async sendMessageHandler(userId: string, message: string): Promise<void> {
+        DB.pushModuleLog(WhatsappModule.moduleName, "SYSTEM_ACTION", `Sending message to ${userId}: ${message}`);
+
         const accessToken = DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.accessToken`);
         if (!accessToken) {
             HardLogger.log(`WhatsApp Module: Access Token is not configured.`);
@@ -159,17 +184,17 @@ export default class WhatsappModule implements SocialModuleInterface {
 
     register(app: Express, controllerRoute: string): void {
         // register webhook route
-        app.post(`${controllerRoute}/webhook`, (req: Request, res: Response) => {
+        app.post(`${controllerRoute}/webhook`, WebHook((req: Request, res: Response) => {
             this.webhookInputHandler(req, res).catch(err => {
                 HardLogger.log(`Error processing webhook input: ${err}`);
                 res.status(500).end();
             });
 
             res.status(200).end();
-        });
+        }));
 
-        app.get(`${controllerRoute}/webhook`, (req: Request, res: Response) => {
-            const verifyToken = DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.verifyToken`);
+        app.get(`${controllerRoute}/webhook`, WebHook(async (req: Request, res: Response) => {
+            const verifyToken = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.verifyToken`)) ?? "default_verify_token";
             const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
 
             if (mode === 'subscribe' && token === verifyToken) {
@@ -178,14 +203,50 @@ export default class WhatsappModule implements SocialModuleInterface {
             } else {
                 res.status(403).end();
             }
+        }));
+
+        app.get(`${controllerRoute}/config`, async (req: Request, res: Response) => {
+            DB.pushModuleLog(WhatsappModule.moduleName, 'HTTP', `Configuration requested.`);
+            const data = (await DB.wildcardQuery(`MODULE.${WhatsappModule.moduleName}.settings.%`)) || [];
+
+            // Build a nested object keyed by the short setting name
+            // e.g. { "active": { type, required, description, value }, ... }
+            const prefix = `MODULE.${WhatsappModule.moduleName}.settings.`;
+            const result: { [key: string]: { type?: any, required?: any, description?: any, value?: any } } = {};
+
+            for (const entry of data) {
+                if (!entry.key || typeof entry.key !== 'string') continue;
+                if (!entry.key.startsWith(prefix)) continue;
+
+                const remainder = entry.key.substring(prefix.length); // e.g. "active.type" or "accessToken"
+                const parts = remainder.split('.');
+                const prop = parts[0];
+                const sub = parts[1] || 'value';
+
+                if (!result[prop]) result[prop] = { type: undefined, required: undefined, description: undefined, value: undefined };
+
+                // Parse stored value into proper primitive when possible
+                let parsed: any = entry.value;
+                if (typeof parsed === 'string') {
+                    try {
+                        parsed = JSON.parse(parsed);
+                    } catch (e) {
+                        // leave as string
+                        parsed = entry.value;
+                    }
+                }
+
+                if (sub === 'type') result[prop].type = parsed;
+                else if (sub === 'required') result[prop].required = parsed;
+                else if (sub === 'description') result[prop].description = parsed;
+                else result[prop].value = parsed;
+            }
+
+            res.json(result);
         });
 
-        // register config update route
-        app.get(`${controllerRoute}/config`, (req: Request, res: Response) => {
-            res.json(DB.getMatching(`MODULE.${WhatsappModule.moduleName}.settings.`, ""));
-        });
-
-        app.post(`${controllerRoute}/config`, (req: Request, res: Response) => {
+        app.post(`${controllerRoute}/config`, async (req: Request, res: Response) => {
+            DB.pushModuleLog(WhatsappModule.moduleName, 'HTTP', `Configuration update received: ${JSON.stringify(req.body)}`);
             const updates = req.body;
             Object.keys(updates).forEach((key) => {
                 DB.setPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.${key}`, updates[key]);

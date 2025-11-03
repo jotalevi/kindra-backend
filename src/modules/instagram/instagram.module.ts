@@ -8,24 +8,26 @@ import AggregatedMessages from '../../aggregatedMessages';
 export default class InstagramModule implements SocialModuleInterface {
     private static moduleName = "";
 
-    static register(app: Express): ModuleDescriptor {
+    static async register(app: Express): Promise<ModuleDescriptor> {
         const config = require('./config.json');
         const moduleName = config.moduleName;
         this.moduleName = moduleName;
 
-        Object.keys(config).forEach((key) => {
-            if (key === 'settings') return
-            if (DB.getPlainValue(`MODULE.${moduleName}.statics.${key}`)) return;
-            DB.setPlainValue(`MODULE.${moduleName}.statics.${key}`, config[key]);
-        });
+        for (const key of Object.keys(config)) {
+            if (key === 'settings') continue;
+            const existing = await DB.getPlainValue(`MODULE.${moduleName}.statics.${key}`);
+            if (existing) continue;
+            await DB.setPlainValueAsync(`MODULE.${moduleName}.statics.${key}`, config[key]);
+        }
 
-        Object.keys(config.settings).forEach((key) => {
-            if (DB.getPlainValue(`MODULE.${moduleName}.settings.${key}`)) return;
-            DB.setPlainValue(`MODULE.${moduleName}.settings.${key}.type`, config.settings[key].type);
-            DB.setPlainValue(`MODULE.${moduleName}.settings.${key}.required`, config.settings[key].required);
-            DB.setPlainValue(`MODULE.${moduleName}.settings.${key}.description`, config.settings[key].description);
-            DB.setPlainValue(`MODULE.${moduleName}.settings.${key}`, config.settings[key].value);
-        });
+        for (const key of Object.keys(config.settings || {})) {
+            const existing = await DB.getPlainValue(`MODULE.${moduleName}.settings.${key}`);
+            if (existing) continue;
+            await DB.setPlainValueAsync(`MODULE.${moduleName}.settings.${key}.type`, config.settings[key].type);
+            await DB.setPlainValueAsync(`MODULE.${moduleName}.settings.${key}.required`, config.settings[key].required);
+            await DB.setPlainValueAsync(`MODULE.${moduleName}.settings.${key}.description`, config.settings[key].description);
+            await DB.setPlainValueAsync(`MODULE.${moduleName}.settings.${key}`, config.settings[key].value);
+        }
 
         const instance = new this();
         instance.register(app, config.controllerPath);

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Kindra — Home</title>
+    <style>
+        :root{--bg:#f5f7fb;--card:#fff;--accent:#2563eb;--muted:#6b7280}
+        *{box-sizing:border-box}
+        body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
+        .card{width:100%;max-width:420px;background:var(--card);border-radius:12px;padding:28px;box-shadow:0 6px 24px rgba(2,6,23,.08)}
+        h1{margin:0 0 8px 0;font-size:20px}
+        p.lead{margin:0 0 18px 0;color:var(--muted);font-size:14px}
+        form{display:grid;gap:12px}
+        label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+        input[type="email"],input[type="password"]{width:100%;padding:10px 12px;border:1px solid #e6e9ef;border-radius:8px;font-size:14px}
+        .row{display:flex;align-items:center;justify-content:space-between}
+        .checkbox{display:flex;align-items:center;gap:8px}
+        .btn{background:var(--accent);color:#fff;padding:10px 12px;border:none;border-radius:8px;font-weight:600;cursor:pointer}
+        .btn:disabled{opacity:.6;cursor:not-allowed}
+        .small{font-size:13px;color:var(--muted);text-align:center;margin-top:12px}
+        a.link{color:var(--accent);text-decoration:none}
+        @media (max-width:420px){body{padding:16px}.card{padding:20px}}
+    </style>
+</head>
+<body>
+    <main class="card" role="main">
+        <h1>Welcome back</h1>
+        <p class="lead">Sign in to continue to Kindra.</p>
+
+        <form id="loginForm" action="/login" method="POST" novalidate>
+            <div>
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+            </div>
+
+            <div>
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required minlength="6" />
+            </div>
+
+            <div class="row">
+                <label class="checkbox">
+                    <input type="checkbox" name="remember" value="1" />
+                    <span style="font-size:13px;color:var(--muted)">Remember me</span>
+                </label>
+                <a class="link" href="/forgot">Forgot?</a>
+            </div>
+
+            <div>
+                <button class="btn" type="submit" id="submitBtn">Sign in</button>
+            </div>
+
+            <p class="small">New here? <a class="link" href="/signup">Create an account</a></p>
+        </form>
+    </main>
+
+    <script>
+        // Minimal client-side UX: prevent double submit and show native validation hints
+        (function(){
+            var form = document.getElementById('loginForm');
+            var btn = document.getElementById('submitBtn');
+            form.addEventListener('submit', function(e){
+                if (!form.checkValidity()){
+                    // Let browser show validation messages
+                    return;
+                }
+                // disable button to prevent double submit
+                btn.disabled = true;
+            });
+        })();
+    </script>
+</body>
+</html>

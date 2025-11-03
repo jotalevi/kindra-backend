@@ -1,1 +1,0 @@
-WhatsApp Module: Failed to send message. Status: 401, Response: {"error":{"message":"Error validating access token: Session has expired on Friday, 31-Oct-25 17:00:00 PDT. The current time is Sunday, 02-Nov-25 18:01:39 PST.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AzVA5ueAIjyYVWF3-e2ojLs"}}

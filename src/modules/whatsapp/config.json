@@ -1,5 +1,7 @@
 {
     "moduleName": "WhatsAppModule",
+    "displayName": "WhatsApp",
+    "displayIcon": "fa-brands fa-whatsapp",
     "version": "1.0.0",
     "author": "kindra.cl",
     "description": "A module to integrate WhatsApp messaging functionality.",
