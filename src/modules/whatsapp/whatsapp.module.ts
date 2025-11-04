@@ -152,16 +152,6 @@ export default class WhatsappModule implements SocialModuleInterface {
                     HardLogger.log(`WhatsApp Module: Phone Number ID is not configured.`);
                     throw new Error("WhatsApp Module: Phone Number ID is not configured.");
                 }
-
-                const response = await fetch(`https://graph.facebook.com/v24.0/${phoneNumber}/whatsapp_business_profile`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${accessToken}`
-                    }
-                });
-
-                HardLogger.log(`WhatsApp Module: Fetched profile picture for user ${userId}. Status: ${await response.text()}`);
             }
 
         }

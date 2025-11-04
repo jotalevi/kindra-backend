@@ -119,28 +119,56 @@ async function main() {
         res.json({ config });
     });
 
-    _._listedModules.push(await WhatsappModule.register(app));
+    app.get('/analytics ', async (req, res) => {
 
-    app.get('/dashboard', async (req, res) => {
-        // Return structured JSON instead of plain HTML so the dashboard can be
-        // rendered by a frontend or consumed by tools.
-        const modulesOutput: Array<any> = [];
+        const allPeriods = [
+            ,
+            ,
 
-        for (const mod of _._listedModules) {
-            const logs = await DB.getModuleLogs(mod.moduleName);
-            modulesOutput.push({
-                moduleName: mod.moduleName,
-                logs: logs.map((log: any) => ({
-                    timestamp: log.timestamp,
-                    type: log.type,
-                    iso: new Date(log.timestamp).toISOString(),
-                    content: log.content
-                }))
-            });
+
+            {   // Last 1 hour
+                from: new Date(Date.now() - 1 * 60 * 60 * 1000),
+                to: new Date()
+            }
+        ];
+
+        let analytics  = {
+            allTime: await DB.getAnalyticsEvents([
+                {   // All events
+                    from: new Date('1970-01-01T00:00:00.000Z'),
+                    to: new Date()
+                }
+            ]),
+            lastMonth: await DB.getAnalyticsEvents([
+                {   // Last 30 days
+                    from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                    to: new Date()
+                }
+            ]),
+            lastWeek: await DB.getAnalyticsEvents([
+                {   // Last 7 days
+                    from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+                    to: new Date()
+                }
+            ]),
+            lastDay: await DB.getAnalyticsEvents([
+                {   // Last 24 hours
+                    from: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                    to: new Date()
+                }
+            ]),
+            lastHour: await DB.getAnalyticsEvents([
+                {   // Last 1 hour
+                    from: new Date(Date.now() - 1 * 60 * 60 * 1000),
+                    to: new Date()
+                }
+            ]),
         }
 
-        res.json({ modules: modulesOutput });
+        res.json({ analytics  });
     });
+
+    _._listedModules.push(await WhatsappModule.register(app));
 
     app.listen(port, () => {
         console.log(`Server running at http://localhost:${port}`);

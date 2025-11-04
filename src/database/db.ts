@@ -177,25 +177,35 @@ export default class DB {
         }[]>((resolve, reject) => {
             if (!DB.db) return reject(new Error('Database not initialized. Call DB.init() before using the DB.'));
 
-            const placeholders = periods.map(() => '(?, ?)').join(',');
-            const sql = `SELECT event_type, AVG(duration) as average_duration, COUNT(*) as occurrences, MAX(duration) as highest_duration, MIN(duration) as lowest_duration, ? as from, ? as to
+            if (!periods || periods.length === 0) return resolve([]);
+
+            // We'll run the same grouped query for each requested period separately
+            const sql = `SELECT event_type, AVG(duration) as average_duration, COUNT(*) as occurrences, MAX(duration) as highest_duration, MIN(duration) as lowest_duration
                          FROM analytics
-                         WHERE (at BETWEEN ? AND ?)
+                         WHERE at BETWEEN ? AND ?
                          GROUP BY event_type
                          ORDER BY average_duration DESC`;
 
-            DB.db.all(sql, [...periods.flatMap(p => [p.from.toISOString(), p.to.toISOString()])], (err, rows: { eventType: string; average_duration: number; occurrences: number; highest_duration: number; lowest_duration: number; from: string; to: string; }[]) => {
-                if (err) return reject(err);
-                resolve(rows.map(row => new AnaliticEventsQueryResponse(
-                    row.eventType,
-                    row.average_duration,
-                    row.occurrences,
-                    row.highest_duration,
-                    row.lowest_duration,
-                    row.from,
-                    row.to
-                )));
-            });
+            Promise.all(periods.map(period => new Promise<AnaliticEventsQueryResponse[]>((res, rej) => {
+                DB.db.all(sql, [period.from.toISOString(), period.to.toISOString()], (err: any, rows: any[]) => {
+                    if (err) return rej(err);
+
+                    const mapped = (rows || []).map(row => new AnaliticEventsQueryResponse(
+                        row.event_type,
+                        row.average_duration,
+                        row.occurrences,
+                        row.highest_duration,
+                        row.lowest_duration,
+                        period.from.toISOString(),
+                        period.to.toISOString()
+                    ));
+
+                    res(mapped);
+                });
+            }))).then(resultsArrays => {
+                // flatten the array-of-arrays into a single array
+                resolve(resultsArrays.flat());
+            }).catch(reject);
         });
     }
 }
