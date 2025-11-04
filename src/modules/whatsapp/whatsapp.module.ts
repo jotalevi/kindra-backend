@@ -7,11 +7,14 @@ import AggregatedMessages from '../../aggregatedMessages';
 import { WebHook } from '../../middleware/auth';
 import OpenAI from "openai";
 import { _ } from '../../index';
+import OpenAiModule from '../openai/openAi.module';
+import { start } from 'repl';
 
 export default class WhatsappModule implements SocialModuleInterface {
     private static moduleName = "";
 
     static async register(app: Express): Promise<ModuleDescriptor> {
+        const startTime = Date.now();
         const config = require('./config.json');
         const moduleName = config.moduleName;
         this.moduleName = moduleName;
@@ -40,6 +43,8 @@ export default class WhatsappModule implements SocialModuleInterface {
         const instance = new this();
         instance.register(app, config.controllerPath);
 
+        DB.analyticsLogEvent(`Module.${moduleName}.Registered`, Date.now() - startTime, new Date());
+
         return {
             instance: instance,
             moduleName: moduleName,
@@ -56,6 +61,7 @@ export default class WhatsappModule implements SocialModuleInterface {
     }
 
     private async processAggregatedMessages(userId: string, messages: { timestamp: number, content: string }[]): Promise<void> {
+        const startTime = Date.now();
         DB.pushModuleLog(WhatsappModule.moduleName, "SYSTEM_ACTION", `Processing aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
 
         this.agregateRequests = this.agregateRequests.filter(a => a.userId !== userId);
@@ -68,47 +74,40 @@ export default class WhatsappModule implements SocialModuleInterface {
         const speech = DB.loadFile(`speech`);
         //const currentUserSchedule = _.modules.invokeMethod("CalendarModule", "getUserScheduledEvents", [userId]);
 
-        const client = new OpenAI({ apiKey: ((await DB.getPlainValue('CONFIG.OPENAI_API_KEY')) ?? '"key"').replace(/"/g, '') });        
-        const response = await client.responses.create({
-            model: ((await DB.getPlainValue('CONFIG.OPENAI_PREFERRED_MODEL')) || '"gpt-4o-mini"').replace(/"/g, ''),
-            input: [
-                {
-                    role: "system",
-                    content: prompt
-                },
-                {
-                    role: "system",
-                    content: `User Context: ${JSON.stringify(ucontext)}`
-                },
-                {
-                    role: "system",
-                    content: `Speech: ${JSON.stringify(speech)}`
-                },
-                //{
-                //    role: "system",
-                //    content: `Current User Scheduled events: ${JSON.stringify([
-                //        { "title": "Liposuccion con doc marcelo", "date": "2024-07-01", "time": "10:00 AM" },
-                //        { "title": "revision con doc marcelo", "date": "2024-07-08", "time": "3:00 PM" },
-                //        { "title": "botox con doc mariana", "date": "2024-07-15", "time": "11:00 AM" }
-                //    ])}`
-                //},
-                {
-                    role: "system",
-                    content: `Expected Output: ${JSON.stringify(expectedOutput)}`
-                },
-                {
-                    role: "system",
-                    content: "IMPORTANT: Respond with a single valid JSON Array of objects (steps) only. Do NOT include any surrounding explanation, commentary, or markdown. The response must be parseable JSON."
-                },
-                {
-                    role: "user",
-                    content: `Messages: ${JSON.stringify(messages)}`
-                }
-            ],
-        });
-
-        const steps = JSON.parse(response.output_text)
-        console.log(steps)
+        const steps = await OpenAiModule.getSteps([
+            {
+                role: "system",
+                content: prompt
+            },
+            {
+                role: "system",
+                content: `User Context: ${JSON.stringify(ucontext)}`
+            },
+            {
+                role: "system",
+                content: `Speech: ${JSON.stringify(speech)}`
+            },
+            //{
+            //    role: "system",
+            //    content: `Current User Scheduled events: ${JSON.stringify([
+            //        { "title": "Liposuccion con doc marcelo", "date": "2024-07-01", "time": "10:00 AM" },
+            //        { "title": "revision con doc marcelo", "date": "2024-07-08", "time": "3:00 PM" },
+            //        { "title": "botox con doc mariana", "date": "2024-07-15", "time": "11:00 AM" }
+            //    ])}`
+            //},
+            {
+                role: "system",
+                content: `Expected Output: ${JSON.stringify(expectedOutput)}`
+            },
+            {
+                role: "system",
+                content: "IMPORTANT: Respond with a single valid JSON Array of objects (steps) only. Do NOT include any surrounding explanation, commentary, or markdown. The response must be parseable JSON."
+            },
+            {
+                role: "user",
+                content: `Messages: ${JSON.stringify(messages)}`
+            }
+        ])
 
         for (const step of steps) {
             if (step.action === "ANSWER") {
@@ -120,9 +119,12 @@ export default class WhatsappModule implements SocialModuleInterface {
             }
         }
 
+        DB.analyticsLogEvent(`Module.${WhatsappModule.moduleName}.ProcessAggregatedMessages`, Date.now() - startTime, new Date());
     }
 
     async webhookInputHandler(req: Request, res: Response): Promise<void> {
+
+        const startTime = Date.now();
         DB.pushModuleLog(WhatsappModule.moduleName, "SYSTEM_ACTION", `Received Message: ${JSON.stringify(req.body)}`);
 
         for (const entry of req.body.entry[0].changes) {
@@ -137,12 +139,40 @@ export default class WhatsappModule implements SocialModuleInterface {
             }
 
             this.agregateRequests.push(agg);
+
+            if (!DB.hitFile(`${WhatsappModule.moduleName}/${userId}.url`)) {
+                const accessToken = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.accessToken`) ?? '""').replace(/"/g, '');
+                if (!accessToken) {
+                    HardLogger.log(`WhatsApp Module: Access Token is not configured.`);
+                    throw new Error("WhatsApp Module: Access Token is not configured.");
+                }
+
+                const phoneNumber = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.phoneNumberId`) ?? '""').replace(/"/g, '');
+                if (!phoneNumber) {
+                    HardLogger.log(`WhatsApp Module: Phone Number ID is not configured.`);
+                    throw new Error("WhatsApp Module: Phone Number ID is not configured.");
+                }
+
+                const response = await fetch(`https://graph.facebook.com/v24.0/${phoneNumber}/whatsapp_business_profile`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                HardLogger.log(`WhatsApp Module: Fetched profile picture for user ${userId}. Status: ${await response.text()}`);
+            }
+
         }
 
+        DB.analyticsLogEvent(`Module.${WhatsappModule.moduleName}.WebhookInputHandler`, Date.now() - startTime, new Date());
         res.status(200).end();
     }
 
     async sendMessageHandler(userId: string, message: string): Promise<void> {
+
+        const startTime = Date.now();
         DB.pushModuleLog(WhatsappModule.moduleName, "SYSTEM_ACTION", `Sending message to ${userId}: ${message}`);
 
         const accessToken = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.accessToken`) ?? '""').replace(/"/g, '');
@@ -180,22 +210,29 @@ export default class WhatsappModule implements SocialModuleInterface {
         }
 
         console.log(await response.text());
+        DB.analyticsLogEvent(`Module.${WhatsappModule.moduleName}.SendMessageHandler`, Date.now() - startTime, new Date());
     }
 
     register(app: Express, controllerRoute: string): void {
         // register webhook route
         app.post(`${controllerRoute}/webhook`, WebHook((req: Request, res: Response) => {
+            const startTime = Date.now();
+            
             this.webhookInputHandler(req, res).catch(err => {
                 HardLogger.log(`Error processing webhook input: ${err}`);
                 res.status(500).end();
             });
 
+            DB.analyticsLogEvent(`Module.${WhatsappModule.moduleName}.WebhookPost`, Date.now() - startTime, new Date());
             res.status(200).end();
         }));
 
         app.get(`${controllerRoute}/webhook`, WebHook(async (req: Request, res: Response) => {
+            const startTime = Date.now();
+
             const verifyToken = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.verifyToken`)) ?? "default_verify_token";
             const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
+
 
             if (mode === 'subscribe' && token === verifyToken) {
                 console.log('WEBHOOK VERIFIED');
@@ -203,9 +240,13 @@ export default class WhatsappModule implements SocialModuleInterface {
             } else {
                 res.status(403).end();
             }
+
+            DB.analyticsLogEvent(`Module.${WhatsappModule.moduleName}.WebhookGet`, Date.now() - startTime, new Date());
         }));
 
         app.get(`${controllerRoute}/config`, async (req: Request, res: Response) => {
+            const startTime = Date.now();
+
             DB.pushModuleLog(WhatsappModule.moduleName, 'HTTP', `Configuration requested.`);
             const data = (await DB.wildcardQuery(`MODULE.${WhatsappModule.moduleName}.settings.%`)) || [];
 
@@ -243,15 +284,21 @@ export default class WhatsappModule implements SocialModuleInterface {
             }
 
             res.json(result);
+
+            DB.analyticsLogEvent(`Module.${WhatsappModule.moduleName}.ConfigGet`, Date.now() - startTime, new Date());
         });
 
         app.post(`${controllerRoute}/config`, async (req: Request, res: Response) => {
+            const startTime = Date.now();
+
             DB.pushModuleLog(WhatsappModule.moduleName, 'HTTP', `Configuration update received: ${JSON.stringify(req.body)}`);
             const updates = req.body;
             Object.keys(updates).forEach((key) => {
                 DB.setPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.${key}`, updates[key]);
             });
             res.json({ status: 'success' });
+
+            DB.analyticsLogEvent(`Module.${WhatsappModule.moduleName}.ConfigPost`, Date.now() - startTime, new Date());
         });
     }
 }
