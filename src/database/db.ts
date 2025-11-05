@@ -7,7 +7,7 @@ export default class DB {
 
     // Validate table names to avoid SQL injection / invalid identifiers
     private static sanitizeTableName(name: string): string {
-        if (!/^[A-Za-z0-9_]+$/.test(name)) throw new Error('Invalid table name');
+        if (!/^[A-Za-z0-9_]+$/.test(name)) HardLogger.error('Invalid table name');
         return name;
     }
 
@@ -25,9 +25,9 @@ export default class DB {
     }
 
     static setPlainValue(key: string, value: any): void {
-        HardLogger.log(`DB: Setting key ${key} to value ${JSON.stringify(value)}`);
-
-        if (!DB.db) throw new Error('Database not initialized. Call DB.init() before using the DB.');
+        if (!DB.db) {
+            HardLogger.error('Database not initialized. Call DB.init() before using the DB.');
+        }
 
         // Run creation + insert in a serialized sequence to avoid race conditions
         DB.db.serialize(() => {
@@ -106,13 +106,13 @@ export default class DB {
     }
 
     static saveFile(fileName: string, content: string, force: boolean = false): void {
-        if (!fs.existsSync(`./src/database/files/${fileName}`) && !force) throw new Error(`File ${fileName} does not exist.`);
+        if (!fs.existsSync(`./src/database/files/${fileName}`) && !force) HardLogger.error(`File ${fileName} does not exist.`);
 
         fs.writeFileSync(`./src/database/files/${fileName}`, content);
     }
 
     static pushModuleLog(moduleName: string, type: string, logMessage: string): void {
-        if (!DB.db) throw new Error('Database not initialized. Call DB.init() before using the DB.');
+        if (!DB.db) HardLogger.error('Database not initialized. Call DB.init() before using the DB.');
 
         const safeModule = DB.sanitizeTableName(moduleName);
         const tableName = `${safeModule}_logs`;
@@ -148,7 +148,7 @@ export default class DB {
     }
 
     static analyticsLogEvent(eventType: string, duration: number, at: Date): void {
-        if (!DB.db) throw new Error('Database not initialized. Call DB.init() before using the DB.');
+        if (!DB.db) HardLogger.error('Database not initialized. Call DB.init() before using the DB.');
         DB.db.serialize(() => {
             DB.db.run("CREATE TABLE IF NOT EXISTS analytics (event_type TEXT, duration INTEGER, at DATETIME)");
             const stmt = DB.db.prepare("INSERT INTO analytics (event_type, duration, at) VALUES (?, ?, ?)");

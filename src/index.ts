@@ -5,6 +5,20 @@ import { Public } from './middleware/auth';
 import DB from './database/db';
 import dotenv from 'dotenv';
 import ModuleDescriptor from './interfaces/moduleDescriptor';
+import HardLogger from './logger/hardLogger';
+import fs from 'fs';
+import path from 'path';
+
+// Ensure the process exits on uncaught errors so an external supervisor can restart it.
+process.on('uncaughtException', (err: any) => {
+    try { HardLogger.error('Uncaught Exception: ' + (err && err.stack ? err.stack : String(err))); } catch (e) { console.error('Uncaught Exception', err); }
+    setTimeout(() => process.exit(1), 100);
+});
+
+process.on('unhandledRejection', (reason: any) => {
+    try { HardLogger.error('Unhandled Rejection: ' + (reason && reason.stack ? reason.stack : String(reason))); } catch (e) { console.error('Unhandled Rejection', reason); }
+    setTimeout(() => process.exit(1), 100);
+});
 
 let app: Express | null = null;
 
@@ -18,8 +32,8 @@ const _: {
         invokeMethod: async (moduleName: string, methodName: string, args: any[]) => {
             const module = _._listedModules.find(m => m.moduleName === moduleName);
 
-            if (!module) throw new Error(`Module ${moduleName} not found`);
-            if (!(module as any)[methodName] || typeof (module as any)[methodName] !== 'function') throw new Error(`Method ${methodName} not found on module ${moduleName}`);
+            if (!module) HardLogger.error(`Module ${moduleName} not found`);
+            if (!(module as any)[methodName] || typeof (module as any)[methodName] !== 'function') HardLogger.error(`Method ${methodName} not found on module ${moduleName}`);
 
             return (module as any)[methodName](...args);
         }
@@ -107,31 +121,83 @@ async function main() {
             const token = `${toSign}.${signature}`;
 
             // Return Bearer token
-            res.status(200).json({ token: `Bearer ${token}`, expiresIn });
+            res.status(200).json({ token: `${token}`, expiresIn });
         } else {
             res.status(401).json({ message: 'Invalid credentials' });
         }
     }));
 
+    app.get('/modules', async (req, res) => {
+        const modules = await Promise.all(_._listedModules.map(async m => ({
+            moduleName: m.moduleName,
+            displayName: m.displayName,
+            enabled: await DB.getPlainValue(`MODULE.${m.moduleName}.ENABLED`) // Ensure module enabled flag exists
+        })));
+
+        res.json({ modules });
+    });
+
+    app.post('/modules/:moduleName', async (req, res) => {
+        const { moduleName } = req.params;
+        const enabled = await DB.getPlainValue(`MODULE.${moduleName}.ENABLED`) === 'false' ? true : false;
+        await DB.setPlainValue(`MODULE.${moduleName}.ENABLED`, enabled);
+        res.json({ message: `Module ${moduleName} updated` }).end();
+
+        // Restart the process to apply module changes
+        setTimeout(() => {
+            HardLogger.info('Restarting process to apply module changes...');
+            process.exit(3);
+        }, 5000);
+    });
+
+    // Prompt Get/Set Routes
+    app.get('/prompt', async (req, res) => {
+        const prompt = DB.loadFile(`prompt`);
+
+        res.json({ prompt });
+    });
+
+    app.post('/prompt', async (req, res) => {
+        const { prompt } = req.body;
+        DB.saveFile(`prompt`, prompt);
+        res.json({ message: 'Prompt updated' });
+    });
+
+    // Speech Get/Set Routes
+    app.get('/speech', async (req, res) => {
+        const speech = DB.loadFile(`speech`);
+        res.json({ speech });
+    });
+
+    app.post('/speech', async (req, res) => {
+        const { speech } = req.body;
+        DB.saveFile(`speech`, speech);
+        res.json({ message: 'Speech updated' });
+    });
+
     // Global Variables Get Route
     app.get('/config', async (req, res) => {
-        const config = await DB.wildcardQuery('CONFIG.%');
-        res.json({ config });
+    const rows = (await DB.wildcardQuery('CONFIG.%')) || [];
+        const config: Record<string, any> = {};
+        for (const r of rows) {
+            if (r && typeof r.key !== 'undefined') {
+                config[r.key] = r.value;
+            }
+        }
+
+        res.json(config);
+    });
+
+    app.post('/config', async (req, res) => {
+        const updates: Record<string, any> = req.body;
+        for (const key of Object.keys(updates)) {
+            DB.setPlainValue(key, updates[key]);
+        }
+
+        res.sendStatus(200);
     });
 
     app.get('/analytics', async (req, res) => {
-
-        const allPeriods = [
-            ,
-            ,
-
-
-            {   // Last 1 hour
-                from: new Date(Date.now() - 1 * 60 * 60 * 1000),
-                to: new Date()
-            }
-        ];
-
         let analytics  = {
             allTime: await DB.getAnalyticsEvents([
                 {   // All events
@@ -168,7 +234,32 @@ async function main() {
         res.json({ analytics  });
     });
 
-    _._listedModules.push(await WhatsappModule.register(app));
+    // Automatically list modules under /src/modules that implement either SocialModuleInterface or SchedulingModuleInterface
+    const moduleFolders = fs.readdirSync(path.join(__dirname, 'modules'))
+    for (const module of moduleFolders) {
+        try {
+            const moduleConfig = fs.readFileSync(path.join(__dirname, 'modules', module, 'config.json'), 'utf-8');
+            const moduleName: string = JSON.parse(moduleConfig).moduleName.toString();
+
+            let enabled = await DB.getPlainValue(`MODULE.${moduleName}.ENABLED`); // Ensure module enabled flag exists
+            if (enabled === null || typeof enabled === 'undefined') {
+                await DB.setPlainValue(`MODULE.${moduleName}.ENABLED`, true);
+                enabled = "true";
+            }
+
+            if (enabled.toString() !== 'true') {
+                HardLogger.info(`ModuleStatus: Module ${moduleName} found in folder ${module}, but disabled.`);
+                _._listedModules.push(await (require(`./modules/${module}/${module}.module`).default).getEmptyDescriptor(app));
+                continue;
+            } else {
+                _._listedModules.push(await (require(`./modules/${module}/${module}.module`).default).register(app));
+                HardLogger.info(`ModuleStatus: Module ${moduleName} loaded successfully.`);
+            }
+        } catch (e) {
+            HardLogger.warn(`Skipping module folder ${module} as it has no config.json`);
+            continue;
+        }
+    }
 
     app.listen(port, () => {
         console.log(`Server running at http://localhost:${port}`);

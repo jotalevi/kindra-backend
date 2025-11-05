@@ -42,7 +42,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
         // Validate IP binding if present
         const forwarded = (req.headers['x-forwarded-for'] as string) || '';
         const clientIp = (forwarded.split(',').map(s => s.trim()).find(Boolean)) || req.socket.remoteAddress || '';
-        if (payload.ip && payload.ip !== clientIp) return res.status(401).json({ success: false, message: 'IP mismatch' });
+        if (payload.ip && payload.ip !== clientIp) return res.status(403).json({ success: false, message: 'IP mismatch' });
 
         // attach user
         (req as any).user = payload;

@@ -48,7 +48,18 @@ export default class WhatsappModule implements SocialModuleInterface {
         return {
             instance: instance,
             moduleName: moduleName,
+            displayName: config.displayName || moduleName,
             actions: instance.getActionDescriptors()
+        }
+    }
+
+    static getEmptyDescriptor(): ModuleDescriptor {
+        const config = require('./config.json');
+        return {
+            instance: {},
+            moduleName: config.moduleName,
+            displayName: config.displayName || config.moduleName,
+            actions: []
         }
     }
 
@@ -63,11 +74,9 @@ export default class WhatsappModule implements SocialModuleInterface {
     private async processAggregatedMessages(userId: string, messages: { timestamp: number, content: string }[]): Promise<void> {
         const startTime = Date.now();
         DB.pushModuleLog(WhatsappModule.moduleName, "SYSTEM_ACTION", `Processing aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
-
+        
         this.agregateRequests = this.agregateRequests.filter(a => a.userId !== userId);
-
-        HardLogger.log(`Processing aggregated messages for user ${userId}: ${JSON.stringify(messages)}`);
-
+        
         const expectedOutput = DB.loadFile(`${WhatsappModule.moduleName}/expectedOutput`);
         const ucontext = DB.loadFile(`${WhatsappModule.moduleName}/${userId}.ucontext.json`);
         const prompt = DB.loadFile(`prompt`);
@@ -115,7 +124,7 @@ export default class WhatsappModule implements SocialModuleInterface {
             } else if (step.action === "UPDATE_USER_CONTEXT") {
                 DB.saveFile(`${WhatsappModule.moduleName}/${userId}.ucontext.json`, step.newUserContext);
             } else {
-                HardLogger.log(`Unknown action received from OpenAI: ${step.action}`);
+                HardLogger.warn(`Unknown action received from OpenAI: ${step.action}`);
             }
         }
 
@@ -143,14 +152,12 @@ export default class WhatsappModule implements SocialModuleInterface {
             if (!DB.hitFile(`${WhatsappModule.moduleName}/${userId}.url`)) {
                 const accessToken = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.accessToken`) ?? '""').replace(/"/g, '');
                 if (!accessToken) {
-                    HardLogger.log(`WhatsApp Module: Access Token is not configured.`);
-                    throw new Error("WhatsApp Module: Access Token is not configured.");
+                    HardLogger.error(`WhatsApp Module: Access Token is not configured.`);
                 }
 
                 const phoneNumber = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.phoneNumberId`) ?? '""').replace(/"/g, '');
                 if (!phoneNumber) {
-                    HardLogger.log(`WhatsApp Module: Phone Number ID is not configured.`);
-                    throw new Error("WhatsApp Module: Phone Number ID is not configured.");
+                    HardLogger.error(`WhatsApp Module: Phone Number ID is not configured.`);
                 }
             }
 
@@ -167,14 +174,12 @@ export default class WhatsappModule implements SocialModuleInterface {
 
         const accessToken = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.accessToken`) ?? '""').replace(/"/g, '');
         if (!accessToken) {
-            HardLogger.log(`WhatsApp Module: Access Token is not configured.`);
-            throw new Error("WhatsApp Module: Access Token is not configured.");
+            HardLogger.error(`WhatsApp Module: Access Token is not configured.`);
         }
 
         const phoneNumber = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.phoneNumberId`) ?? '""').replace(/"/g, '');
         if (!phoneNumber) {
-            HardLogger.log(`WhatsApp Module: Phone Number ID is not configured.`);
-            throw new Error("WhatsApp Module: Phone Number ID is not configured.");
+            HardLogger.error(`WhatsApp Module: Phone Number ID is not configured.`);
         }
 
         const response = await fetch(`https://graph.facebook.com/v22.0/${phoneNumber}/messages`, {
@@ -195,8 +200,7 @@ export default class WhatsappModule implements SocialModuleInterface {
 
         if (!response.ok) {
             const errorText = await response.text();
-            HardLogger.log(`WhatsApp Module: Failed to send message. Status: ${response.status}, Response: ${errorText}`);
-            throw new Error(`WhatsApp Module: Failed to send message. Status: ${response.status}`);
+            HardLogger.error(`WhatsApp Module: Failed to send message. Status: ${response.status}, Response: ${errorText}`);
         }
 
         console.log(await response.text());
@@ -209,7 +213,7 @@ export default class WhatsappModule implements SocialModuleInterface {
             const startTime = Date.now();
             
             this.webhookInputHandler(req, res).catch(err => {
-                HardLogger.log(`Error processing webhook input: ${err}`);
+                HardLogger.error(`Error processing webhook input: ${err}`);
                 res.status(500).end();
             });
 

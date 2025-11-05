@@ -15,11 +15,13 @@ export { ModuleActionDescriptor };
 export default class ModuleDescriptor {
     instance: object;
     moduleName: string;
+    displayName: string;
     actions: ModuleActionDescriptor[];
-    
-    constructor(instance: object, moduleName: string, actions: ModuleActionDescriptor[]) {
+
+    constructor(instance: object, moduleName: string, displayName: string, actions: ModuleActionDescriptor[]) {
         this.instance = instance;
         this.moduleName = moduleName;
+        this.displayName = displayName;
         this.actions = actions;
     }
 }
