@@ -119,7 +119,7 @@ async function main() {
         res.json({ config });
     });
 
-    app.get('/analytics ', async (req, res) => {
+    app.get('/analytics', async (req, res) => {
 
         const allPeriods = [
             ,
