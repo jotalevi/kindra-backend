@@ -80,16 +80,38 @@ async function main() {
 
     app.use(express.json());
 
+    app.use((req, res, next) => {
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+
+        if (req.method === 'OPTIONS') {
+            return res.sendStatus(204);
+        }
+
+        next();
+    });
+
     // Add a simple frontend here, anything comming from tenant_id.kindra.cl will get served a basic HTML page
     app.use((req, res, next) => {
         const host = req.headers.host || '';
         const tenantId = DB.getPlainValue('HIDDEN.TENANT_ID') || 'kindra';
         if (host.startsWith(tenantId + '.kindra.cl')) {
-            res.sendFile('index.html', { root: './public' });
+            res.redirect('/dashboard/login');
         } else {
             next();
         };
     });
+
+    app.get('/tenant', Public(async (req, res) => {
+        try {
+            const raw = await DB.getPlainValue('HIDDEN.TENANT_ID');
+            const tenantId = raw ? raw.replace(/^"|"$/g, '') : 'kindra';
+            res.json({ tenantId });
+        } catch (err) {
+            res.json({ tenantId: 'kindra' });
+        }
+    }));
 
     // Admin login route
     app.post('/login', Public(async (req, res) => {
@@ -131,6 +153,7 @@ async function main() {
         const modules = await Promise.all(_._listedModules.map(async m => ({
             moduleName: m.moduleName,
             displayName: m.displayName,
+            path: m.path,
             enabled: await DB.getPlainValue(`MODULE.${m.moduleName}.ENABLED`) // Ensure module enabled flag exists
         })));
 

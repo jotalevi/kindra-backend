@@ -48,6 +48,7 @@ export default class WhatsappModule implements SocialModuleInterface {
         return {
             instance: instance,
             moduleName: moduleName,
+            path: config.controllerPath,
             displayName: config.displayName || moduleName,
             actions: instance.getActionDescriptors()
         }
@@ -58,6 +59,7 @@ export default class WhatsappModule implements SocialModuleInterface {
         return {
             instance: {},
             moduleName: config.moduleName,
+            path: config.controllerPath,
             displayName: config.displayName || config.moduleName,
             actions: []
         }
