@@ -4,11 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-  "build": "tsc && node scripts/copy-assets.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc && node scripts/copy-assets.js",
     "start": "node scripts/supervisor.js dist/index.js",
-    "start:docker": "docker compose build && docker compose up --scale app=4",
-  "start:direct": "node dist/index.js"
+    "start:docker": "bash scripts/start-docker.sh",
+    "start:direct": "node dist/index.js"
   },
   "keywords": [],
   "author": "",
