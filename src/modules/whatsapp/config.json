@@ -32,6 +32,12 @@
             "description": "The phone number ID associated with the WhatsApp Business API",
             "value": "YOUR_PHONE_NUMBER_ID"
         },
+        "administratorUserIDs": {
+            "type": "array",
+            "required": false,
+            "description": "List of user IDs with administrative privileges for the WhatsApp module",
+            "value": []
+        },
         "allowPersistentChanges": {
             "type": "boolean",
             "required": true,
