@@ -229,19 +229,15 @@ export default class WhatsappModule implements SocialModuleInterface {
             
             const startTime = Date.now();
 
-            const verifyToken = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.verifyToken`)) ?? "default_verify_token";
+            const verifyToken = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.verifyToken`) ?? "default_verify_token").replace(/"/g, '') ?? "";
             const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
 
-            HardLogger.log(`WEBHOOK VERIFY TOKEN: ${token} VERIFY TOKEN: ${verifyToken}`);
-
             if (mode === 'subscribe' && token === verifyToken) {
-                console.log('WEBHOOK VERIFIED');
                 res.status(200).send(challenge);
             } else {
+                HardLogger.error(`WEBHOOK VERIFICATION FAILED: ${token} !== ${verifyToken}`);
                 res.status(403).end();
             }
-
-            DB.analyticsLogEvent(`Module.${WhatsappModule.moduleName}.WebhookGet`, Date.now() - startTime, new Date());
         }));
 
         app.get(`${controllerRoute}/config`, async (req: Request, res: Response) => {
