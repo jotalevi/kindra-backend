@@ -8,11 +8,6 @@ export function Public(handler: RouteHandler): RouteHandler {
     return handler;
 }
 
-export function WebHook(handler: RouteHandler): RouteHandler {
-    (handler as any).__webhook = true;
-    return handler;
-}
-
 function base64urlDecode(input: string): Buffer {
     // pad
     input = input.replace(/-/g, '+').replace(/_/g, '/');
@@ -54,6 +49,5 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
 
 export default {
     Public,
-    WebHook,
     authMiddleware
 };

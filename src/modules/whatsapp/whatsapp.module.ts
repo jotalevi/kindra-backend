@@ -4,7 +4,7 @@ import SocialModuleInterface from "../../interfaces/socialModuleInterface";
 import HardLogger from '../../logger/hardLogger';
 import ModuleDescriptor, { ModuleActionDescriptor } from '../../interfaces/moduleDescriptor';
 import AggregatedMessages from '../../aggregatedMessages';
-import { WebHook } from '../../middleware/auth';
+import { Public } from '../../middleware/auth';
 import OpenAI from "openai";
 import { _ } from '../../index';
 import OpenAiModule from '../openai/openAi.module';
@@ -211,7 +211,7 @@ export default class WhatsappModule implements SocialModuleInterface {
 
     register(app: Express, controllerRoute: string): void {
         // register webhook route
-        app.post(`${controllerRoute}/webhook`, WebHook((req: Request, res: Response) => {
+        app.post(`${controllerRoute}/webhook`, Public((req: Request, res: Response) => {
             const startTime = Date.now();
             
             this.webhookInputHandler(req, res).catch(err => {
@@ -223,7 +223,7 @@ export default class WhatsappModule implements SocialModuleInterface {
             res.status(200).end();
         }));
 
-        app.get(`${controllerRoute}/webhook`, WebHook(async (req: Request, res: Response) => {
+        app.get(`${controllerRoute}/webhook`, Public(async (req: Request, res: Response) => {
             const startTime = Date.now();
 
             const verifyToken = (await DB.getPlainValue(`MODULE.${WhatsappModule.moduleName}.settings.verifyToken`)) ?? "default_verify_token";
