@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+dist
+.git
+.env
+hardlogger.log
+docker-compose.override.yml
+.DS_Store
+

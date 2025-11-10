@@ -1,6 +1,11 @@
 import fs from 'fs';
+import path from 'path';
 import sqlite3 from 'sqlite3';
 import HardLogger from '../logger/hardLogger';
+
+const databaseRoot = path.resolve(process.env.DATABASE_ROOT || path.join(process.cwd(), 'src', 'database'));
+const filesDirectory = path.join(databaseRoot, 'files');
+const dataFilePath = path.join(databaseRoot, 'data.db');
 
 export default class DB {
     private static db: sqlite3.Database;
@@ -13,7 +18,14 @@ export default class DB {
 
     static async init(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            DB.db = new sqlite3.Database('./src/database/data.db', (err) => {
+            try {
+                fs.mkdirSync(databaseRoot, { recursive: true });
+                fs.mkdirSync(filesDirectory, { recursive: true });
+            } catch (mkdirErr) {
+                return reject(mkdirErr);
+            }
+
+            DB.db = new sqlite3.Database(dataFilePath, (err) => {
                 if (err) return reject(err);
                 // Ensure the primary storage table exists before any operations run
                 DB.db.run("CREATE TABLE IF NOT EXISTS data (key TEXT PRIMARY KEY, value TEXT)", (createErr: any) => {
@@ -94,21 +106,24 @@ export default class DB {
     }
 
     static hitFile(fileName: string): boolean {
-        const filePath = `./src/database/files/${fileName}`;
+        const filePath = path.join(filesDirectory, fileName);
         return fs.existsSync(filePath);
     }
 
     static loadFile(fileName: string, force: boolean = false): string {
-        const filePath = `./src/database/files/${fileName}`;
-        if (!fs.existsSync(filePath) && force) fs.writeFileSync(filePath, '');
+        const filePath = path.join(filesDirectory, fileName);
+        if (!fs.existsSync(filePath) && force) {
+            fs.writeFileSync(filePath, '');
+        }
 
         return fs.readFileSync(filePath, 'utf-8');
     }
 
     static saveFile(fileName: string, content: string, force: boolean = false): void {
-        if (!fs.existsSync(`./src/database/files/${fileName}`) && !force) HardLogger.error(`File ${fileName} does not exist.`);
+        const filePath = path.join(filesDirectory, fileName);
+        if (!fs.existsSync(filePath) && !force) HardLogger.error(`File ${fileName} does not exist.`);
 
-        fs.writeFileSync(`./src/database/files/${fileName}`, content);
+        fs.writeFileSync(filePath, content);
     }
 
     static pushModuleLog(moduleName: string, type: string, logMessage: string): void {
