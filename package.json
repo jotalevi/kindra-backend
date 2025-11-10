@@ -8,7 +8,8 @@
     "build": "tsc && node scripts/copy-assets.js",
     "start": "node scripts/supervisor.js dist/index.js",
     "start:docker": "bash scripts/start-docker.sh",
-    "start:direct": "node dist/index.js"
+    "start:direct": "node dist/index.js",
+    "rerun": "git pull && tsc && node scripts/copy-assets.js && pm2 stop api && pm2 delete api && pm2 start npm --name api -- run start"
   },
   "keywords": [],
   "author": "",
