@@ -7,6 +7,7 @@
   "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
   "build": "tsc && node scripts/copy-assets.js",
   "start": "node scripts/supervisor.js dist/index.js",
+  "start:docker": "docker compose up --build --scale app=4",
   "start:direct": "node dist/index.js"
   },
   "keywords": [],
