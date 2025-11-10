@@ -49,8 +49,8 @@ async function main() {
 
 
     
-    DB.setPlainValue('CONFIG.OPENAI_API_KEY', (await DB.getPlainValue('CONFIG.OPENAI_API_KEY')) ?? process.env.OPENAI_API_KEY);
-    DB.setPlainValue('CONFIG.OPENAI_PREFERRED_MODEL', (await DB.getPlainValue('CONFIG.OPENAI_PREFERRED_MODEL')) ?? (process.env.OPENAI_PREFERRED_MODEL || 'gpt-4o-mini'));
+    DB.setPlainValue('CONFIG.OPENAI_API_KEY', ((await DB.getPlainValue('CONFIG.OPENAI_API_KEY')) ?? process.env.OPENAI_API_KEY)?.replace(/^"|"$/g, '') || '');
+    DB.setPlainValue('CONFIG.OPENAI_PREFERRED_MODEL', ((await DB.getPlainValue('CONFIG.OPENAI_PREFERRED_MODEL')) ?? (process.env.OPENAI_PREFERRED_MODEL || 'gpt-4o-mini')).replace(/^"|"$/g, ''));
 
     app = express();
     const port = process.env.PORT || 3012;
