@@ -111,6 +111,10 @@ export default class DB {
     }
 
     static loadFile(fileName: string, force: boolean = false): string {
+        if (!DB.hitFile(fileName) && !force) {
+            HardLogger.error(`File ${fileName} does not exist.`);
+        }
+
         const filePath = path.join(filesDirectory, fileName);
         if (!fs.existsSync(filePath) && force) {
             fs.writeFileSync(filePath, '');

@@ -80,7 +80,7 @@ export default class WhatsappModule implements SocialModuleInterface {
         this.agregateRequests = this.agregateRequests.filter(a => a.userId !== userId);
         
         const expectedOutput = DB.loadFile(`${WhatsappModule.moduleName}/expectedOutput`);
-        const ucontext = DB.loadFile(`${WhatsappModule.moduleName}/${userId}.ucontext.json`);
+        const ucontext = DB.loadFile(`${WhatsappModule.moduleName}/${userId}.ucontext.json`, true);
         const prompt = DB.loadFile(`prompt`);
         const speech = DB.loadFile(`speech`);
         //const currentUserSchedule = _.modules.invokeMethod("CalendarModule", "getUserScheduledEvents", [userId]);
